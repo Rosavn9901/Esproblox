@@ -1,8 +1,8 @@
 --[[
-    FINAL FIX ESP V12 (AUTO-CLEANUP & ZERO LAG)
-    - Fix: Tự động xóa nhãn khi nhặt quà hoặc Gift biến mất.
-    - Fix: Chống hiện trùng tên 2-3 lần.
-    - Performance: Siêu mượt cho máy yếu.
+    SPECIALIZED SINGLE-GIFT ESP V14
+    - Optimization: Stops scanning once the Gift is found.
+    - Behavior: Auto-cleans when the Gift is collected.
+    - Player ESP: Event-based, zero lag.
 ]]
 
 local Players = game:GetService("Players")
@@ -11,10 +11,11 @@ local RunService = game:GetService("RunService")
 
 local MAX_DIST = 300
 local TargetKey = "Gift"
+local CurrentGift = nil -- Lưu trữ hộp quà duy nhất đang tồn tại
 
--- === HÀM TẠO NHÃN GIFT (FIX LỖI) ===
+-- === HÀM TẠO NHÃN GIFT ===
 local function CreateGiftTag(target)
-    if target:FindFirstChild("GiftTag") then return end
+    if target:FindFirstChild("GiftTag") then return target.GiftTag end
 
     local bg = Instance.new("BillboardGui", target)
     bg.Name = "GiftTag"
@@ -26,7 +27,7 @@ local function CreateGiftTag(target)
     main.Name = "Main"
     main.Size = UDim2.new(1, 0, 0.5, 0)
     main.BackgroundTransparency = 1
-    main.TextColor3 = Color3.new(1, 1, 0)
+    main.TextColor3 = Color3.fromRGB(255, 255, 0)
     main.Font = Enum.Font.GothamBold
     main.TextSize = 11
     main.TextStrokeTransparency = 0
@@ -40,68 +41,68 @@ local function CreateGiftTag(target)
     arrow.TextColor3 = Color3.new(1, 1, 1)
     arrow.TextSize = 13
     arrow.TextStrokeTransparency = 0
+    
+    return bg
 end
 
--- === VÒNG LẶP QUÉT VÀ DỌN DẸP (QUAN TRỌNG) ===
+-- === HÀM TẠO NHÃN PLAYER ===
+local function CreatePlayerTag(root)
+    if root:FindFirstChild("PlayerTag") then return root.PlayerTag end
+    local bg = Instance.new("BillboardGui", root)
+    bg.Name = "PlayerTag"; bg.AlwaysOnTop = true; bg.Size = UDim2.new(0, 100, 0, 40); bg.ExtentsOffset = Vector3.new(0, 3, 0)
+    local m = Instance.new("TextLabel", bg); m.Name = "Main"; m.Size = UDim2.new(1, 0, 0.5, 0); m.BackgroundTransparency = 1; m.Font = "GothamBold"; m.TextSize = 11; m.TextStrokeTransparency = 0
+    local a = Instance.new("TextLabel", bg); a.Name = "Arrow"; a.Size = UDim2.new(1, 0, 0.5, 0); a.Position = UDim2.new(0,0,0.5,0); a.BackgroundTransparency = 1; a.Text = "▼"; a.TextSize = 13; a.TextStrokeTransparency = 0
+    return bg
+end
+
+-- === VÒNG LẶP QUÉT TÌM GIFT (THÔNG MINH) ===
 task.spawn(function()
-    while task.wait(0.5) do
-        -- 1. Tìm Gift mới
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and v.Name:find(TargetKey) then
-                -- Tìm model cha hoặc chính nó để gắn ESP (Fix trùng tên)
-                local model = v:FindFirstAncestorOfClass("Model")
-                local actualTarget = model or v
-                CreateGiftTag(actualTarget)
+    while true do
+        if not CurrentGift or not CurrentGift.Parent or not CurrentGift:IsDescendantOf(workspace) then
+            CurrentGift = nil
+            -- Chỉ quét khi chưa thấy Gift
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") and v.Name:find(TargetKey) then
+                    CurrentGift = v:FindFirstAncestorOfClass("Model") or v
+                    CreateGiftTag(CurrentGift)
+                    break -- Thoát vòng lặp ngay khi tìm thấy 1 cái
+                end
             end
         end
-        
-        -- 2. Tự động dọn dẹp (Nếu vật phẩm bị mất nhưng Tag vẫn còn lỗi)
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name == "GiftTag" and (not v.Parent or not v.Parent.Parent) then
-                v:Destroy()
-            end
-        end
+        task.wait(1) -- Quét lại mỗi giây nếu chưa có Gift
     end
 end)
 
--- === VÒNG LẶP CẬP NHẬT (KHOẢNG CÁCH & TEAM) ===
-RunService.Heartbeat:Connect(function()
+-- === VÒNG LẶP CẬP NHẬT GIAO DIỆN ===
+RunService.RenderStepped:Connect(function()
     local myChar = LP.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Cập nhật Gift (Chỉ hiện khi ở gần)
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == "GiftTag" then
-            local dist = (v.Parent:GetPivot().Position - myRoot.Position).Magnitude
+    -- Cập nhật Gift duy nhất
+    if CurrentGift and CurrentGift:IsDescendantOf(workspace) then
+        local tag = CurrentGift:FindFirstChild("GiftTag")
+        if tag then
+            local dist = (CurrentGift:GetPivot().Position - myRoot.Position).Magnitude
             if dist <= MAX_DIST then
-                v.Enabled = true
-                v.Main.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
+                tag.Enabled = true
+                tag.Main.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
             else
-                v.Enabled = false
+                tag.Enabled = false
             end
         end
     end
 
-    -- Player ESP (Màu theo team thực tế)
+    -- Cập nhật Player ESP (Event-driven)
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LP and p.Character then
             local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
             if pRoot then
-                local tag = pRoot:FindFirstChild("PlayerTag")
-                if not tag then
-                    -- Tạo nhãn player nếu chưa có
-                    local bg = Instance.new("BillboardGui", pRoot)
-                    bg.Name = "PlayerTag"; bg.AlwaysOnTop = true; bg.Size = UDim2.new(0, 100, 0, 40); bg.ExtentsOffset = Vector3.new(0, 3, 0)
-                    local m = Instance.new("TextLabel", bg); m.Name = "Main"; m.Size = UDim2.new(1, 0, 0.5, 0); m.BackgroundTransparency = 1; m.Font = "GothamBold"; m.TextSize = 12; m.TextStrokeTransparency = 0
-                    local a = Instance.new("TextLabel", bg); a.Name = "Arrow"; a.Size = UDim2.new(1, 0, 0.5, 0); a.Position = UDim2.new(0,0,0.5,0); a.BackgroundTransparency = 1; a.Text = "▼"; a.TextSize = 14; a.TextStrokeTransparency = 0
-                    tag = bg
-                end
-                
+                local tag = CreatePlayerTag(pRoot)
                 local dist = (pRoot.Position - myRoot.Position).Magnitude
                 if dist <= MAX_DIST then
                     tag.Enabled = true
-                    local color = p.TeamColor.Color or Color3.new(1, 1, 1)
+                    local color = p.TeamColor.Color
                     tag.Main.Text = p.Name .. " [" .. math.floor(dist) .. "m]"
                     tag.Main.TextColor3 = color
                     tag.Arrow.TextColor3 = color
