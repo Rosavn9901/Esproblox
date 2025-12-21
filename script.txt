@@ -1,52 +1,80 @@
 --[[
-    ULTRA MINIMAL GIFT ESP (NAME ONLY)
+    ULTRA MINIMAL: GIFT & PLAYER ESP (NAME ONLY)
     - Auto-scanning: Always On
+    - Filter Team: Green (Ally) / Red (Enemy)
     - No Menu, No Lag
 ]]
 
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local TargetKeyword = "Gift" -- Từ khóa để quét
 
--- Hàm dọn dẹp các tag cũ để tránh lỗi chồng chéo
+local TargetKeyword = "Gift" -- Từ khóa vật phẩm
+
+-- Hàm dọn dẹp Tag cũ khi khởi động
 local function ClearOldTags()
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == "GiftTag" then
+        if v.Name == "GiftTag" or v.Name == "PlayerTag" then
             v:Destroy()
         end
     end
 end
-
--- Dọn dẹp một lần khi mới chạy script
 ClearOldTags()
 
--- Vòng lặp quét liên tục mỗi giây
+-- Vòng lặp quét liên tục
 RunService.Heartbeat:Connect(function()
+    -- 1. XỬ LÝ GIFT ESP
     for _, v in pairs(workspace:GetDescendants()) do
-        -- Kiểm tra nếu là BasePart và tên bắt đầu bằng "Gift"
         if v:IsA("BasePart") and v.Name:sub(1, #TargetKeyword) == TargetKeyword then
-            
-            -- Nếu chưa có Tag thì tạo mới
             if not v:FindFirstChild("GiftTag") then
-                local bg = Instance.new("BillboardGui")
+                local bg = Instance.new("BillboardGui", v)
                 bg.Name = "GiftTag"
-                bg.Parent = v
                 bg.AlwaysOnTop = true
-                bg.Size = UDim2.new(0, 100, 0, 20)
-                bg.ExtentsOffset = Vector3.new(0, 3, 0) -- Độ cao của chữ trên vật phẩm
+                bg.Size = UDim2.new(0, 80, 0, 20)
+                bg.ExtentsOffset = Vector3.new(0, 3, 0)
 
-                local lbl = Instance.new("TextLabel")
-                lbl.Parent = bg
+                local lbl = Instance.new("TextLabel", bg)
                 lbl.Size = UDim2.new(1, 0, 1, 0)
                 lbl.BackgroundTransparency = 1
-                lbl.Text = "🎁 GIFT" -- Hiển thị tên
-                lbl.TextColor3 = Color3.fromRGB(255, 255, 255) -- Màu trắng
-                lbl.TextStrokeTransparency = 0 -- Viền đen cho dễ nhìn
-                lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                lbl.Text = "🎁 GIFT"
+                lbl.TextColor3 = Color3.new(1, 1, 1) -- Màu trắng
+                lbl.TextStrokeTransparency = 0
                 lbl.Font = Enum.Font.GothamBold
-                lbl.TextSize = 14
+                lbl.TextSize = 12
+            end
+        end
+    end
+
+    -- 2. XỬ LÝ PLAYER ESP
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = p.Character.HumanoidRootPart
+            
+            -- Kiểm tra Team
+            local isAlly = (p.Team ~= nil and p.Team == LP.Team)
+            local teamColor = isAlly and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+
+            if not hrp:FindFirstChild("PlayerTag") then
+                local bg = Instance.new("BillboardGui", hrp)
+                bg.Name = "PlayerTag"
+                bg.AlwaysOnTop = true
+                bg.Size = UDim2.new(0, 100, 0, 20)
+                bg.ExtentsOffset = Vector3.new(0, 3, 0)
+
+                local lbl = Instance.new("TextLabel", bg)
+                lbl.Size = UDim2.new(1, 0, 1, 0)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = p.Name
+                lbl.TextColor3 = teamColor
+                lbl.TextStrokeTransparency = 0
+                lbl.Font = Enum.Font.GothamBold
+                lbl.TextSize = 12
+            else
+                -- Cập nhật lại màu nếu đổi team
+                hrp.PlayerTag.TextLabel.TextColor3 = teamColor
             end
         end
     end
 end)
 
-print("Gift ESP (Name Only) đã hoạt động!")
+print("Gift & Player ESP đã hoạt động!")
