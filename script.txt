@@ -1,110 +1,112 @@
 --[[
-    PLAYER ESP LAG-FREE VERSION
-    - Logic: Event-based (No Workspace Scanning).
-    - Performance: Extremely Low CPU Usage.
-    - Range: Infinite (Hoặc tùy chỉnh).
+    FINAL FIX ESP V12 (AUTO-CLEANUP & ZERO LAG)
+    - Fix: Tự động xóa nhãn khi nhặt quà hoặc Gift biến mất.
+    - Fix: Chống hiện trùng tên 2-3 lần.
+    - Performance: Siêu mượt cho máy yếu.
 ]]
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- Cấu hình
-local SHOW_DISTANCE = true
-local TargetKeyword = "Gift" -- Vẫn giữ Gift nhưng sẽ dùng tối ưu riêng
+local MAX_DIST = 300
+local TargetKey = "Gift"
 
--- Hàm lấy màu Team
-local function GetPlayerColor(p)
-    if p.TeamColor then return p.TeamColor.Color end
-    return Color3.new(1, 1, 1)
+-- === HÀM TẠO NHÃN GIFT (FIX LỖI) ===
+local function CreateGiftTag(target)
+    if target:FindFirstChild("GiftTag") then return end
+
+    local bg = Instance.new("BillboardGui", target)
+    bg.Name = "GiftTag"
+    bg.AlwaysOnTop = true
+    bg.Size = UDim2.new(0, 100, 0, 40)
+    bg.ExtentsOffset = Vector3.new(0, 2, 0)
+    
+    local main = Instance.new("TextLabel", bg)
+    main.Name = "Main"
+    main.Size = UDim2.new(1, 0, 0.5, 0)
+    main.BackgroundTransparency = 1
+    main.TextColor3 = Color3.new(1, 1, 0)
+    main.Font = Enum.Font.GothamBold
+    main.TextSize = 11
+    main.TextStrokeTransparency = 0
+    
+    local arrow = Instance.new("TextLabel", bg)
+    arrow.Name = "Arrow"
+    arrow.Size = UDim2.new(1, 0, 0.5, 0)
+    arrow.Position = UDim2.new(0, 0, 0.5, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▼"
+    arrow.TextColor3 = Color3.new(1, 1, 1)
+    arrow.TextSize = 13
+    arrow.TextStrokeTransparency = 0
 end
 
--- HÀM TẠO ESP CHO NGƯỜI CHƠI (Chỉ chạy 1 lần khi người chơi load)
-local function CreatePlayerESP(p)
-    p.CharacterAdded:Connect(function(char)
-        local root = char:WaitForChild("HumanoidRootPart", 10)
-        if not root then return end
-
-        local bg = root:FindFirstChild("PlayerTag") or Instance.new("BillboardGui")
-        bg.Name = "PlayerTag"
-        bg.Parent = root
-        bg.AlwaysOnTop = true
-        bg.Size = UDim2.new(0, 120, 0, 40)
-        bg.ExtentsOffset = Vector3.new(0, 4, 0)
-
-        local label = bg:FindFirstChild("Main") or Instance.new("TextLabel", bg)
-        label.Name = "Main"
-        label.Size = UDim2.new(1, 0, 0.5, 0)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 11
-        label.TextStrokeTransparency = 0
-
-        local arrow = bg:FindFirstChild("Arrow") or Instance.new("TextLabel", bg)
-        arrow.Name = "Arrow"
-        arrow.Size = UDim2.new(1, 0, 0.5, 0)
-        arrow.Position = UDim2.new(0, 0, 0.5, 0)
-        arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
-        arrow.TextStrokeTransparency = 0
-        arrow.TextSize = 13
-    end)
-end
-
--- Khởi tạo cho những người đã có sẵn trong server
-for _, p in pairs(Players:GetPlayers()) do
-    if p ~= LP then
-        CreatePlayerESP(p)
-        if p.Character then -- Nếu họ đã load nhân vật rồi
-            -- Gọi thủ công CharacterAdded cho họ
-            task.spawn(function()
-                local char = p.Character
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    -- Tự kích hoạt lại logic tạo nhãn nếu cần
-                end
-            end)
+-- === VÒNG LẶP QUÉT VÀ DỌN DẸP (QUAN TRỌNG) ===
+task.spawn(function()
+    while task.wait(0.5) do
+        -- 1. Tìm Gift mới
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and v.Name:find(TargetKey) then
+                -- Tìm model cha hoặc chính nó để gắn ESP (Fix trùng tên)
+                local model = v:FindFirstAncestorOfClass("Model")
+                local actualTarget = model or v
+                CreateGiftTag(actualTarget)
+            end
+        end
+        
+        -- 2. Tự động dọn dẹp (Nếu vật phẩm bị mất nhưng Tag vẫn còn lỗi)
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == "GiftTag" and (not v.Parent or not v.Parent.Parent) then
+                v:Destroy()
+            end
         end
     end
-end
-
--- Lắng nghe người chơi mới vào
-Players.PlayerAdded:Connect(function(p)
-    if p ~= LP then CreatePlayerESP(p) end
 end)
 
--- VÒNG LẶP NHẸ (Chỉ cập nhật dữ liệu, không quét vật thể)
-RunService.RenderStepped:Connect(function()
-    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+-- === VÒNG LẶP CẬP NHẬT (KHOẢNG CÁCH & TEAM) ===
+RunService.Heartbeat:Connect(function()
+    local myChar = LP.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Cập nhật Player ESP
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
-            if pRoot and pRoot:FindFirstChild("PlayerTag") then
-                local tag = pRoot.PlayerTag
-                local dist = (pRoot.Position - myRoot.Position).Magnitude
-                local color = GetPlayerColor(p)
-                
-                tag.Main.Text = p.Name .. " [" .. math.floor(dist) .. "m]"
-                tag.Main.TextColor3 = color
-                tag.Arrow.TextColor3 = color
+    -- Cập nhật Gift (Chỉ hiện khi ở gần)
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "GiftTag" then
+            local dist = (v.Parent:GetPivot().Position - myRoot.Position).Magnitude
+            if dist <= MAX_DIST then
+                v.Enabled = true
+                v.Main.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
+            else
+                v.Enabled = false
             end
         end
     end
 
-    -- Riêng với Gift: Vì Gift không phải là Player, ta vẫn phải quét nhưng quét ít hơn
-    -- Tần suất quét Gift: 1 giây 1 lần để chống lag
-end)
-
--- Tách riêng logic quét Gift ra để không làm nặng vòng lặp Render
-task.spawn(function()
-    while task.wait(1) do -- Quét Gift mỗi giây 1 lần là đủ
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name:sub(1, #TargetKeyword) == TargetKeyword and v:IsA("BasePart") then
-                if not v:FindFirstChild("GiftTag") then
-                    -- Tạo Tag cho Gift (giống logic cũ)
+    -- Player ESP (Màu theo team thực tế)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
+            if pRoot then
+                local tag = pRoot:FindFirstChild("PlayerTag")
+                if not tag then
+                    -- Tạo nhãn player nếu chưa có
+                    local bg = Instance.new("BillboardGui", pRoot)
+                    bg.Name = "PlayerTag"; bg.AlwaysOnTop = true; bg.Size = UDim2.new(0, 100, 0, 40); bg.ExtentsOffset = Vector3.new(0, 3, 0)
+                    local m = Instance.new("TextLabel", bg); m.Name = "Main"; m.Size = UDim2.new(1, 0, 0.5, 0); m.BackgroundTransparency = 1; m.Font = "GothamBold"; m.TextSize = 12; m.TextStrokeTransparency = 0
+                    local a = Instance.new("TextLabel", bg); a.Name = "Arrow"; a.Size = UDim2.new(1, 0, 0.5, 0); a.Position = UDim2.new(0,0,0.5,0); a.BackgroundTransparency = 1; a.Text = "▼"; a.TextSize = 14; a.TextStrokeTransparency = 0
+                    tag = bg
+                end
+                
+                local dist = (pRoot.Position - myRoot.Position).Magnitude
+                if dist <= MAX_DIST then
+                    tag.Enabled = true
+                    local color = p.TeamColor.Color or Color3.new(1, 1, 1)
+                    tag.Main.Text = p.Name .. " [" .. math.floor(dist) .. "m]"
+                    tag.Main.TextColor3 = color
+                    tag.Arrow.TextColor3 = color
+                else
+                    tag.Enabled = false
                 end
             end
         end
