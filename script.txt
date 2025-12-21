@@ -1,70 +1,77 @@
 --[[
-    ADVANCED GIFT & PLAYER ESP (DISTANCE + ARROW + TEAM COLOR)
-    - Optimization: Render distance 500m to reduce lag.
-    - Multi-Team: Automatic team color matching.
-    - Indicators: Directional arrows for targets.
+    OPTIMIZED ESP V9 (FIX DOUBLE NAME)
+    - Fix: Chống hiện nhiều tên trên cùng 1 vật phẩm.
+    - Range: 300m.
+    - Features: Team Color, Directional Arrow, Distance.
 ]]
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
-local MAX_DISTANCE = 500 -- Khoảng cách tối đa để hiện ESP (giảm lag)
+local MAX_DISTANCE = 300 
 local TargetKeyword = "Gift"
 
--- Hàm lấy màu Team
 local function GetPlayerColor(p)
-    if p.TeamColor then
-        return p.TeamColor.Color
-    end
-    return Color3.new(1, 1, 1) -- Trắng nếu không có team
+    if p.TeamColor then return p.TeamColor.Color end
+    return Color3.new(1, 1, 1)
 end
 
--- Vòng lặp xử lý chính
 RunService.Heartbeat:Connect(function()
     local character = LP.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-    
     if not rootPart then return end
 
-    -- 1. XỬ LÝ GIFT ESP
+    -- 1. XỬ LÝ GIFT ESP (FIX DOUBLE NAME)
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("BasePart") and v.Name:sub(1, #TargetKeyword) == TargetKeyword then
             local dist = (v.Position - rootPart.Position).Magnitude
             
+            -- Kiểm tra xem vật phẩm này hoặc Model cha của nó đã có ESP chưa
+            local parentModel = v:FindFirstAncestorOfClass("Model")
+            local hasESP = v:FindFirstChild("GiftTag") or (parentModel and parentModel:FindFirstChild("GiftTag"))
+
             if dist <= MAX_DISTANCE then
-                local bg = v:FindFirstChild("GiftTag") or Instance.new("BillboardGui", v)
-                bg.Name = "GiftTag"
-                bg.AlwaysOnTop = true
-                bg.Size = UDim2.new(0, 100, 0, 40)
-                bg.ExtentsOffset = Vector3.new(0, 3, 0)
+                if not hasESP then
+                    local bg = Instance.new("BillboardGui", v)
+                    bg.Name = "GiftTag"
+                    bg.AlwaysOnTop = true
+                    bg.Size = UDim2.new(0, 100, 0, 40)
+                    bg.ExtentsOffset = Vector3.new(0, 3, 0)
 
-                local label = bg:FindFirstChild("Main") or Instance.new("TextLabel", bg)
-                label.Name = "Main"
-                label.Size = UDim2.new(1, 0, 0.5, 0)
-                label.BackgroundTransparency = 1
-                label.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
-                label.TextColor3 = Color3.fromRGB(255, 255, 0)
-                label.TextStrokeTransparency = 0
-                label.Font = Enum.Font.GothamBold
-                label.TextSize = 12
+                    local label = Instance.new("TextLabel", bg)
+                    label.Name = "Main"
+                    label.Size = UDim2.new(1, 0, 0.5, 0)
+                    label.BackgroundTransparency = 1
+                    label.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
+                    label.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    label.TextStrokeTransparency = 0
+                    label.Font = Enum.Font.GothamBold
+                    label.TextSize = 11
 
-                local arrow = bg:FindFirstChild("Arrow") or Instance.new("TextLabel", bg)
-                arrow.Name = "Arrow"
-                arrow.Size = UDim2.new(1, 0, 0.5, 0)
-                arrow.Position = UDim2.new(0, 0, 0.5, 0)
-                arrow.BackgroundTransparency = 1
-                arrow.Text = "▼" -- Mũi tên chỉ xuống
-                arrow.TextColor3 = Color3.new(1, 1, 1)
-                arrow.TextStrokeTransparency = 0
-                arrow.TextSize = 14
+                    local arrow = Instance.new("TextLabel", bg)
+                    arrow.Name = "Arrow"
+                    arrow.Size = UDim2.new(1, 0, 0.5, 0)
+                    arrow.Position = UDim2.new(0, 0, 0.5, 0)
+                    arrow.BackgroundTransparency = 1
+                    arrow.Text = "▼"
+                    arrow.TextColor3 = Color3.new(1, 1, 1)
+                    arrow.TextStrokeTransparency = 0
+                    arrow.TextSize = 13
+                else
+                    -- Nếu đã có ESP, chỉ cập nhật khoảng cách cho nhãn đang tồn tại
+                    local tag = v:FindFirstChild("GiftTag") or (parentModel and parentModel:FindFirstChild("GiftTag"))
+                    if tag and tag:FindFirstChild("Main") then
+                        tag.Main.Text = "🎁 GIFT [" .. math.floor(dist) .. "m]"
+                    end
+                end
             else
                 if v:FindFirstChild("GiftTag") then v.GiftTag:Destroy() end
             end
         end
     end
 
-    -- 2. XỬ LÝ PLAYER ESP
+    -- 2. XỬ LÝ PLAYER ESP (GIỮ NGUYÊN)
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local pRoot = p.Character.HumanoidRootPart
@@ -72,9 +79,9 @@ RunService.Heartbeat:Connect(function()
             
             if dist <= MAX_DISTANCE then
                 local teamColor = GetPlayerColor(p)
-                
                 local bg = pRoot:FindFirstChild("PlayerTag") or Instance.new("BillboardGui", pRoot)
-                bg.Name = "PlayerTag"
+                if bg.Name ~= "PlayerTag" then bg.Name = "PlayerTag" end -- Đảm bảo tên đúng
+                
                 bg.AlwaysOnTop = true
                 bg.Size = UDim2.new(0, 120, 0, 40)
                 bg.ExtentsOffset = Vector3.new(0, 4, 0)
@@ -87,7 +94,7 @@ RunService.Heartbeat:Connect(function()
                 label.TextColor3 = teamColor
                 label.TextStrokeTransparency = 0
                 label.Font = Enum.Font.GothamBold
-                label.TextSize = 12
+                label.TextSize = 11
 
                 local arrow = bg:FindFirstChild("Arrow") or Instance.new("TextLabel", bg)
                 arrow.Name = "Arrow"
@@ -97,12 +104,10 @@ RunService.Heartbeat:Connect(function()
                 arrow.Text = "▼"
                 arrow.TextColor3 = teamColor
                 arrow.TextStrokeTransparency = 0
-                arrow.TextSize = 14
+                arrow.TextSize = 13
             else
                 if pRoot:FindFirstChild("PlayerTag") then pRoot.PlayerTag:Destroy() end
             end
         end
     end
 end)
-
-print("Advanced ESP (Distance + Arrow + Team) đã kích hoạt!")
