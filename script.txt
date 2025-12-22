@@ -4,16 +4,6 @@ local RunService = game:GetService("RunService")
 
 local MAX_DIST = 300
 local GiftKey = "Gift"
-local KillerTeamName = "Killer" -- Thay đổi tên này nếu phe sát nhân trong game đặt tên khác
-
-local function GetColor(p)
-    if p.Team and p.Team.Name == KillerTeamName then
-        return Color3.new(1, 0, 0) -- Màu đỏ cho Killer
-    elseif p.TeamColor then
-        return p.TeamColor.Color -- Màu theo team cho người khác
-    end
-    return Color3.new(1, 1, 1)
-end
 
 local function CreateTag(parent, name, color)
     if parent:FindFirstChild(name) then return parent[name] end
@@ -29,11 +19,11 @@ RunService.RenderStepped:Connect(function()
     local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- 1. Gift ESP
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("BasePart") and v.Name:find(GiftKey) and not v.Name:lower():find("fake") then
             local target = v:FindFirstAncestorOfClass("Model") or v
             local dist = (v.Position - myRoot.Position).Magnitude
+            
             if dist <= MAX_DIST then
                 local tag = CreateTag(target, "GiftTag", Color3.new(1, 1, 0))
                 tag.Enabled = true
@@ -43,26 +33,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-
-    -- 2. Player/Killer ESP
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local pRoot = p.Character.HumanoidRootPart
-            local dist = (pRoot.Position - myRoot.Position).Magnitude
-            if dist <= MAX_DIST then
-                local color = GetColor(p)
-                local tag = CreateTag(pRoot, "PlayerTag", color)
-                tag.Enabled = true
-                local prefix = (p.Team and p.Team.Name == KillerTeamName) and "💀 " or ""
-                tag.Main.Text = prefix .. p.Name .. " [" .. math.floor(dist) .. "m]"
-                tag.Main.TextColor3 = color; tag.Arrow.TextColor3 = color
-            elseif pRoot:FindFirstChild("PlayerTag") then
-                pRoot.PlayerTag.Enabled = false
-            end
-        end
-    end
     
-    -- Dọn dẹp Gift đã mất
     for _, v in pairs(workspace:GetDescendants()) do
         if v.Name == "GiftTag" and (not v.Parent or not v.Parent:IsDescendantOf(workspace)) then
             v:Destroy()
