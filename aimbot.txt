@@ -1,0 +1,256 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Chó Cụt Tay | v10",
+   LoadingTitle = "Đang khởi tạo hệ thống...",
+   LoadingSubtitle = "cre : ROSAVN9901",
+   ConfigurationSaving = { Enabled = false }
+})
+
+-- ==========================
+-- BIẾN HỆ THỐNG
+-- ==========================
+_G.HitboxSize = 20
+_G.HitboxEnabled = false
+_G.ESP_Enabled = false
+_G.Box_Enabled = false
+_G.HealthBar_Enabled = false
+_G.Aimlock_Enabled = false
+_G.HardLock = false
+_G.Face_Enabled = false đồng bộ hướng đi
+_G.TeamCheck = false
+_G.WhitelistedPlayers = {}
+
+_G.AimButton_Enabled = false
+local LockedPlayer = nil
+
+_G.Color_Name = Color3.fromRGB(255, 255, 255)
+_G.Color_Box = Color3.fromRGB(255, 255, 255)
+
+-- ==========================
+-- TẠO CÁC TAB
+-- ==========================
+local CombatTab = Window:CreateTab("Combat", 4483362458)
+local VisualTab = Window:CreateTab("Visuals", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+local HitboxTab = Window:CreateTab("Hitbox", 4483362458)
+local FilterTab = Window:CreateTab("Player Filter", 4483362458)
+
+-- [TAB 1: COMBAT]
+CombatTab:CreateSection("Movement Aimlock (Ghim & Chạy)")
+CombatTab:CreateToggle({
+   Name = "Bật Aimlock",
+   CurrentValue = false,
+   Flag = "aim_toggle",
+   Callback = function(Value) _G.Aimlock_Enabled = Value end,
+})
+
+CombatTab:CreateSection("Aimlock Button (Nút L)")
+CombatTab:CreateToggle({
+   Name = "Bật Nút L Lock đơn mục tiêu",
+   CurrentValue = false,
+   Flag = "aim_btn_toggle",
+   Callback = function(Value) 
+      _G.AimButton_Enabled = Value 
+      if game.CoreGui:FindFirstChild("AimlockGui") then
+         game.CoreGui.AimlockGui.Enabled = Value
+         if not Value then LockedPlayer = nil end
+      end
+   end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Chế độ AIM CỨNG",
+   CurrentValue = false,
+   Flag = "hard_lock",
+   Callback = function(Value) _G.HardLock = Value end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = false,
+   Flag = "team_check",
+   Callback = function(Value) _G.TeamCheck = Value end,
+})
+
+-- ==========================
+-- UI NÚT L (DRAGGABLE)
+-- ==========================
+local AimGui = Instance.new("ScreenGui")
+local MainBtn = Instance.new("TextButton")
+local TargetLabel = Instance.new("TextLabel")
+local UICorner = Instance.new("UICorner")
+
+AimGui.Name = "AimlockGui"; AimGui.Parent = game.CoreGui; AimGui.Enabled = false
+MainBtn.Name = "MainBtn"; MainBtn.Parent = AimGui; MainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainBtn.Position = UDim2.new(0.5, -25, 0.5, -25); MainBtn.Size = UDim2.new(0, 50, 0, 50)
+MainBtn.Text = "L"; MainBtn.TextColor3 = Color3.fromRGB(255, 255, 255); MainBtn.TextSize = 24; MainBtn.Font = Enum.Font.SourceSansBold
+MainBtn.Active = true; MainBtn.Draggable = true
+UICorner.CornerRadius = UDim.new(1, 0); UICorner.Parent = MainBtn
+TargetLabel.Parent = MainBtn; TargetLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0); TargetLabel.BackgroundTransparency = 0.4
+TargetLabel.Position = UDim2.new(0, -25, 1, 5); TargetLabel.Size = UDim2.new(0, 100, 0, 20)
+TargetLabel.Text = "Target: None"; TargetLabel.TextColor3 = Color3.fromRGB(255, 255, 255); TargetLabel.TextSize = 12
+
+MainBtn.MouseButton1Click:Connect(function()
+    if LockedPlayer then
+        LockedPlayer = nil
+        MainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        TargetLabel.Text = "Target: None"
+    else
+        local target = nil
+        local dist = math.huge
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)).Magnitude
+                    if mag < dist then target = p; dist = mag end
+                end
+            end
+        end
+        if target then
+            LockedPlayer = target
+            MainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+            TargetLabel.Text = "Locking: " .. target.Name
+        end
+    end
+end)
+
+-- ==========================
+-- HÀM HỖ TRỢ & ESP
+-- ==========================
+local function isValid(plr)
+    if not plr or plr == game.Players.LocalPlayer then return false end
+    if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") or not plr.Character:FindFirstChild("Humanoid") then return false end
+    if _G.TeamCheck and plr.Team == game.Players.LocalPlayer.Team then return false end
+    for _, name in pairs(_G.WhitelistedPlayers) do if plr.Name == name then return false end end
+    return true
+end
+
+local function CreateESP(plr)
+    local InfoTag = Drawing.new("Text")
+    local Box = Drawing.new("Square")
+    local HealthBar = Drawing.new("Square")
+
+    InfoTag.Visible = false; InfoTag.Center = true; InfoTag.Outline = true; InfoTag.Font = 2; InfoTag.Size = 13
+    Box.Visible = false; Box.Thickness = 1; Box.Filled = false
+    HealthBar.Visible = false; HealthBar.Thickness = 1; HealthBar.Filled = true
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if plr.Character and plr.Character:FindFirstChild("Humanoid") and isValid(plr) then
+            local HRP = plr.Character.HumanoidRootPart
+            local Hum = plr.Character.Humanoid
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(HRP.Position)
+
+            if onScreen then
+                local sizeX = 1000 / pos.Z
+                local sizeY = 2000 / pos.Z
+                local boxPos = Vector2.new(pos.X - sizeX / 2, pos.Y - sizeY / 2)
+                local isLocked = (LockedPlayer == plr)
+
+                if _G.ESP_Enabled then
+                    local dist = math.floor((game.Players.LocalPlayer.Character.HumanoidRootPart.Position - HRP.Position).Magnitude)
+                    InfoTag.Position = Vector2.new(pos.X, pos.Y - (sizeY / 2) - 15)
+                    InfoTag.Text = string.format("%s | %d HP | %dm", plr.Name, math.floor(Hum.Health), dist)
+                    InfoTag.Color = isLocked and Color3.new(1,0,0) or _G.Color_Name
+                    InfoTag.Visible = true
+                else InfoTag.Visible = false end
+
+                if _G.Box_Enabled then
+                    Box.Size = Vector2.new(sizeX, sizeY); Box.Position = boxPos
+                    Box.Color = isLocked and Color3.new(1,0,0) or _G.Color_Box
+                    Box.Visible = true
+                else Box.Visible = false end
+
+                if _G.HealthBar_Enabled then
+                    local healthPct = math.clamp(Hum.Health / Hum.MaxHealth, 0, 1)
+                    local barSize = sizeY * healthPct
+                    HealthBar.Size = Vector2.new(1.2, barSize)
+                    HealthBar.Position = Vector2.new(boxPos.X - 4, boxPos.Y + (sizeY - barSize))
+                    HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 0.9, 1)
+                    HealthBar.Visible = true
+                else HealthBar.Visible = false end
+            else InfoTag.Visible = false; Box.Visible = false; HealthBar.Visible = false end
+        else
+            InfoTag.Visible = false; Box.Visible = false; HealthBar.Visible = false
+        end
+    end)
+end
+
+for _, p in pairs(game.Players:GetPlayers()) do CreateESP(p) end
+game.Players.PlayerAdded:Connect(CreateESP)
+
+-- ==========================
+-- LOGIC CHIẾN ĐẤU (GHIM TÂM & HƯỚNG MẶT)
+-- ==========================
+game:GetService("RunService").RenderStepped:Connect(function()
+    local Camera = workspace.CurrentCamera
+    local MyChar = game.Players.LocalPlayer.Character
+    if not MyChar or not MyChar:FindFirstChild("HumanoidRootPart") then return end
+    
+    local finalTarget = nil
+    
+    -- 1. Xác định mục tiêu (Ưu tiên nút L)
+    if _G.AimButton_Enabled and LockedPlayer and LockedPlayer.Character and LockedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        finalTarget = LockedPlayer.Character.HumanoidRootPart
+    elseif _G.Aimlock_Enabled then
+        local targetDist = math.huge
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if isValid(p) then
+                local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                    if mag < targetDist then
+                        finalTarget = p.Character.HumanoidRootPart
+                        targetDist = mag
+                    end
+                end
+            end
+        end
+    end
+
+    -- 2. Thực thi Ghim tâm và Xoay người
+    if finalTarget then
+        local tPos = finalTarget.Position
+        
+        -- Ghim Camera
+        if _G.HardLock then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, tPos)
+        else
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, tPos), 0.15)
+        end
+        
+        -- XOAY NHÂN VẬT ĐỂ ĐỒNG BỘ HƯỚNG CHẠY (QUAN TRỌNG)
+        local myHRP = MyChar.HumanoidRootPart
+        myHRP.CFrame = CFrame.new(myHRP.Position, Vector3.new(tPos.X, myHRP.Position.Y, tPos.Z))
+    end
+
+    -- 3. Hitbox Logic
+    if _G.HitboxEnabled then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if isValid(p) then
+                p.Character.HumanoidRootPart.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                p.Character.HumanoidRootPart.Transparency = 0.7
+            end
+        end
+    end
+end)
+
+-- [TAB CÒN LẠI]
+VisualTab:CreateSection("ESP Settings")
+VisualTab:CreateToggle({Name = "ESP TÊN", CurrentValue = false, Flag = "f_i", Callback = function(V) _G.ESP_Enabled = V end})
+VisualTab:CreateToggle({Name = "ESP Box", CurrentValue = false, Flag = "f_b", Callback = function(V) _G.Box_Enabled = V end})
+VisualTab:CreateToggle({Name = "ESP MÁU", CurrentValue = false, Flag = "f_h", Callback = function(V) _G.HealthBar_Enabled = V end})
+
+SettingsTab:CreateColorPicker({Name = "Màu ESP", Color = _G.Color_Name, Callback = function(V) _G.Color_Name = V end})
+
+HitboxTab:CreateInput({Name = "Size Hitbox", PlaceholderText = "10", Callback = function(T) _G.HitboxSize = tonumber(T) or 10 end})
+HitboxTab:CreateToggle({Name = "Bật Hitbox", CurrentValue = false, Flag = "f_hb", Callback = function(V) _G.HitboxEnabled = V end})
+
+local PlayerDropdown = FilterTab:CreateDropdown({Name = "Whitelist", Options = {}, MultipleOptions = true, Flag = "f_dr", Callback = function(O) _G.WhitelistedPlayers = O end})
+FilterTab:CreateButton({Name = "Làm mới Player", Callback = function() 
+    local t = {} for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then table.insert(t, p.Name) end end
+    PlayerDropdown:Refresh(t, true) 
+end})
+
+Rayfield:Notify({Title = "GÂU GÂU", Content = "🐧", Duration = 3})
