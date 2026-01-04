@@ -17,7 +17,7 @@ _G.Box_Enabled = false
 _G.HealthBar_Enabled = false
 _G.Aimlock_Enabled = false
 _G.HardLock = false
-_G.Face_Enabled = false đồng bộ hướng đi
+_G.Face_Enabled = false
 _G.TeamCheck = false
 _G.WhitelistedPlayers = {}
 
