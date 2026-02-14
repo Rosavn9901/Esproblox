@@ -1,0 +1,90 @@
+-- Tùy chỉnh
+local TARGET_NAME = "Apple" -- Tên vật phẩm cần nhặt
+local DELAY_TIME = 0      -- Khoảng nghỉ giữa mỗi lần quét (tránh văng game trên Android)
+local SPAM_COUNT = 100       -- Số lần "nhồi" lệnh mỗi đợt (tăng tốc độ nhặt)
+
+-- Giao diện nút bấm
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("TextButton")
+local UICorner = Instance.new("UICorner")
+
+ScreenGui.Name = "AppleAutoGui"
+ScreenGui.Parent = game:GetService("CoreGui")
+
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- Màu đỏ (OFF)
+ToggleButton.Position = UDim2.new(0.15, 0, 0.15, 0)
+ToggleButton.Size = UDim2.new(0, 120, 0, 50)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "APPLE: OFF"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 18
+ToggleButton.Active = true
+ToggleButton.Draggable = true -- Cho phép kéo nút trên màn hình điện thoại
+
+UICorner.Parent = ToggleButton
+
+-- Biến kiểm soát trạng thái
+local isRunning = false
+
+-- Hàm tìm ProximityPrompt của Apple gần nhất (Dựa trên code gốc của bạn)
+local function getNearestApplePrompt()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Character = LocalPlayer.Character
+    if not Character then return nil end
+    local HRP = Character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return nil end
+
+    local nearestPrompt = nil
+    local shortestDistance = math.huge
+
+    for _, v in ipairs(workspace:GetDescendants()) do
+        -- Kiểm tra nếu là nút bấm, đang bật, và thuộc về vật phẩm tên "Apple"
+        if v:IsA("ProximityPrompt") and v.Enabled then
+            if v.Parent.Name == TARGET_NAME or v.ObjectText == TARGET_NAME then
+                local parent = v.Parent
+                if parent and parent:IsA("BasePart") then
+                    local distance = (HRP.Position - parent.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        nearestPrompt = v
+                    end
+                end
+            end
+        end
+    end
+    return nearestPrompt
+end
+
+-- Logic khi nhấn nút
+ToggleButton.MouseButton1Click:Connect(function()
+    isRunning = not isRunning
+    
+    if isRunning then
+        ToggleButton.Text = "APPLE: ON"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0) -- Màu xanh (ON)
+        
+        -- Chạy vòng lặp trong luồng phụ để không làm treo game
+        task.spawn(function()
+            while isRunning do
+                local prompt = getNearestApplePrompt()
+                if prompt then
+                    -- Ép thời gian giữ phím về 0 để nhặt ngay lập tức
+                    prompt.HoldDuration = 0
+                    
+                    -- Nhồi lệnh nhặt theo số lượng tùy chỉnh
+                    for i = 1, SPAM_COUNT do
+                        if not isRunning then break end
+                        fireproximityprompt(prompt, 0)
+                    end
+                end
+                task.wait(DELAY_TIME)
+            end
+        end)
+    else
+        ToggleButton.Text = "APPLE: OFF"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end
+end)
