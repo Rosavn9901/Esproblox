@@ -4,8 +4,8 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- Tạo Cửa sổ Giao diện
 local Window = Rayfield:CreateWindow({
    Name = "Tactical ESP Menu",
-   LoadingTitle = "Đang khởi tạo hệ thống...",
-   LoadingSubtitle = "by Gemini",
+   LoadingTitle = "bố tiến đẹp zai cu to",
+   LoadingSubtitle = "đạt nguuuu",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
 })
