@@ -1,0 +1,97 @@
+-- Tải thư viện Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- Tạo Cửa sổ Giao diện
+local Window = Rayfield:CreateWindow({
+   Name = "Tactical ESP Menu",
+   LoadingTitle = "Đang khởi tạo hệ thống...",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = { Enabled = false },
+   KeySystem = false,
+})
+
+local Tab = Window:CreateTab("Main ESP", 4483362458)
+
+---------------------------------------------------------
+-- LOGIC ESP (Đã sửa tên SignalDisruptor)
+---------------------------------------------------------
+local Workspace = game:GetService("Workspace")
+local ESPEnabled = false
+local espConnection = nil
+
+-- Danh sách vật thể & Màu sắc tương ứng
+local espList = {
+    ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255), -- Đã sửa chữ 'D' viết hoa
+    ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
+    ["FragGrenade"]     = Color3.fromRGB(255, 0, 0),
+    ["Remotec4"]        = Color3.fromRGB(255, 0, 0),
+    ["Claymore"]        = Color3.fromRGB(255, 0, 0),
+    ["Bomb"]            = Color3.fromRGB(255, 0, 0),
+    ["Drone"]           = Color3.fromRGB(0, 255, 0),
+    ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
+}
+
+local function applyESP(instance)
+    if ESPEnabled and espList[instance.Name] then
+        if not instance:FindFirstChild("Tactical_ESP_Highlight") then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "Tactical_ESP_Highlight"
+            highlight.Parent = instance
+            highlight.FillColor = espList[instance.Name]
+            highlight.FillTransparency = 0.5
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineTransparency = 0
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        end
+    end
+end
+
+local function removeAllESP()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        local hl = obj:FindFirstChild("Tactical_ESP_Highlight")
+        if hl then hl:Destroy() end
+    end
+end
+
+---------------------------------------------------------
+-- GIAO DIỆN RAYFIELD
+---------------------------------------------------------
+Tab:CreateToggle({
+   Name = "Bật/Tắt Gadget ESP",
+   CurrentValue = false,
+   Flag = "MasterESPToggle", 
+   Callback = function(Value)
+        ESPEnabled = Value
+        
+        if ESPEnabled then
+            -- Bật và quét
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                applyESP(obj)
+            end
+            -- Theo dõi vật thể mới
+            espConnection = Workspace.DescendantAdded:Connect(function(newObj)
+                task.wait(0.1)
+                applyESP(newObj)
+            end)
+            
+            Rayfield:Notify({Title = "ESP Status", Content = "Hệ thống ESP đã KÍCH HOẠT", Duration = 2})
+        else
+            -- Tắt và dọn dẹp
+            if espConnection then
+                espConnection:Disconnect()
+                espConnection = nil
+            end
+            removeAllESP()
+            
+            Rayfield:Notify({Title = "ESP Status", Content = "Hệ thống ESP đã VÔ HIỆU HÓA", Duration = 2})
+        end
+   end,
+})
+
+-- Thông báo khi load xong
+Rayfield:Notify({
+   Title = "Sẵn sàng!",
+   Content = "Menu đã được nạp thành công.",
+   Duration = 3,
+   Image = 4483362458,
+})
