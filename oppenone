@@ -1,27 +1,61 @@
--- Tải thư viện Rayfield UI
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- TRÌNH QUẢN LÝ TACTICAL ESP (CUSTOM GUI)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local ToggleBtn = Instance.new("TextButton")
+local StatusLab = Instance.new("TextLabel")
+local UICorner = Instance.new("UICorner")
 
--- Tạo Cửa sổ Giao diện
-local Window = Rayfield:CreateWindow({
-   Name = "Tactical ESP Menu",
-   LoadingTitle = "bố tiến đẹp zai cu to",
-   LoadingSubtitle = "đạt nguuuu",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false,
-})
+-- Thiết lập giao diện
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "TacticalESP_UI"
 
-local Tab = Window:CreateTab("Main ESP", 4483362458)
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 120)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Cho phép kéo thả menu
+
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "Tactical ESP"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+
+StatusLab.Parent = MainFrame
+StatusLab.Position = UDim2.new(0, 0, 0.3, 0)
+StatusLab.Size = UDim2.new(1, 0, 0, 20)
+StatusLab.Text = "Trạng thái: TẮT"
+StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
+StatusLab.BackgroundTransparency = 1
+StatusLab.Font = Enum.Font.Gotham
+StatusLab.TextSize = 14
+
+ToggleBtn.Parent = MainFrame
+ToggleBtn.Position = UDim2.new(0.1, 0, 0.55, 0)
+ToggleBtn.Size = UDim2.new(0.8, 0, 0, 35)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleBtn.Text = "BẬT ESP"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamSemibold
+ToggleBtn.TextSize = 14
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
 ---------------------------------------------------------
--- LOGIC ESP (Đã sửa tên SignalDisruptor)
+-- LOGIC ESP
 ---------------------------------------------------------
 local Workspace = game:GetService("Workspace")
 local ESPEnabled = false
 local espConnection = nil
 
--- Danh sách vật thể & Màu sắc tương ứng
 local espList = {
-    ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255), -- Đã sửa chữ 'D' viết hoa
+    ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255),
     ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
     ["FragGrenade"]     = Color3.fromRGB(255, 0, 0),
     ["Remotec4"]        = Color3.fromRGB(255, 0, 0),
@@ -53,45 +87,37 @@ local function removeAllESP()
     end
 end
 
----------------------------------------------------------
--- GIAO DIỆN RAYFIELD
----------------------------------------------------------
-Tab:CreateToggle({
-   Name = "Bật/Tắt Gadget ESP",
-   CurrentValue = false,
-   Flag = "MasterESPToggle", 
-   Callback = function(Value)
-        ESPEnabled = Value
+-- Chức năng Toggle
+ToggleBtn.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    
+    if ESPEnabled then
+        ToggleBtn.Text = "TẮT ESP"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        StatusLab.Text = "Trạng thái: ĐANG BẬT"
+        StatusLab.TextColor3 = Color3.fromRGB(0, 255, 0)
         
-        if ESPEnabled then
-            -- Bật và quét
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                applyESP(obj)
-            end
-            -- Theo dõi vật thể mới
-            espConnection = Workspace.DescendantAdded:Connect(function(newObj)
-                task.wait(0.1)
-                applyESP(newObj)
-            end)
-            
-            Rayfield:Notify({Title = "ESP Status", Content = "Hệ thống ESP đã KÍCH HOẠT", Duration = 2})
-        else
-            -- Tắt và dọn dẹp
-            if espConnection then
-                espConnection:Disconnect()
-                espConnection = nil
-            end
-            removeAllESP()
-            
-            Rayfield:Notify({Title = "ESP Status", Content = "Hệ thống ESP đã VÔ HIỆU HÓA", Duration = 2})
+        -- Quét hiện tại
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            applyESP(obj)
         end
-   end,
-})
+        -- Theo dõi mới
+        espConnection = Workspace.DescendantAdded:Connect(function(newObj)
+            task.wait(0.1)
+            applyESP(newObj)
+        end)
+    else
+        ToggleBtn.Text = "BẬT ESP"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        StatusLab.Text = "Trạng thái: TẮT"
+        StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
+        
+        if espConnection then
+            espConnection:Disconnect()
+            espConnection = nil
+        end
+        removeAllESP()
+    end
+end)
 
--- Thông báo khi load xong
-Rayfield:Notify({
-   Title = "Sẵn sàng!",
-   Content = "Menu đã được nạp thành công.",
-   Duration = 3,
-   Image = 4483362458,
-})
+print("Tactical ESP Loaded!")
