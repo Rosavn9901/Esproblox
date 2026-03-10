@@ -39,7 +39,7 @@ local function checkAndApply(obj)
     if obj:IsA("Model") then
         -- Kiểm tra các bộ phận đặc trưng của character
         if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
-            applyOutline(obj, Color3.fromRGB(255, 255, 255)) -- Viền trắng cho NPC
+            applyOutline(obj, Color3.fromRGB(255, 0, 0)) -- Viền trắng cho NPC
         end
     end
 end
