@@ -8,7 +8,7 @@ local tacticalList = {
     ["FragGrenade"]     = Color3.fromRGB(255, 0, 0),
     ["Remotec4"]        = Color3.fromRGB(255, 0, 0),
     ["Claymore"]        = Color3.fromRGB(255, 0, 0),
-    ["Bomb"]            = Color3.fromRGB(255, 0, 0),
+    ["Bomb"]            = Color3.fromRGB(255, 255, 255),
     ["Drone"]           = Color3.fromRGB(0, 255, 0),
     ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
 }
