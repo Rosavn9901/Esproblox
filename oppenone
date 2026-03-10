@@ -1,15 +1,29 @@
--- TRÌNH QUẢN LÝ TACTICAL & CHARACTER ESP (COMBINED)
+-- TRÌNH QUẢN LÝ TACTICAL & CHARACTER ESP (VỚI NÚT ĐÓNG/MỞ GUI)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local ToggleBtn = Instance.new("TextButton")
 local StatusLab = Instance.new("TextLabel")
-local UICorner = Instance.new("UICorner")
+local OpenCloseBtn = Instance.new("TextButton") -- Nút đóng/mở GUI
 
--- 1. Thiết lập giao diện (GUI)
+-- 1. Thiết lập ScreenGui
 ScreenGui.Parent = game.CoreGui
 ScreenGui.Name = "CombinedESP_UI"
+ScreenGui.ResetOnSpawn = false
 
+-- 2. Nút nhỏ để hiện/ẩn Menu (Nằm ở góc dưới bên trái)
+OpenCloseBtn.Name = "OpenCloseBtn"
+OpenCloseBtn.Parent = ScreenGui
+OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+OpenCloseBtn.Position = UDim2.new(0.02, 0, 0.9, 0)
+OpenCloseBtn.Size = UDim2.new(0, 80, 0, 30)
+OpenCloseBtn.Text = "HIỆN MENU"
+OpenCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenCloseBtn.Font = Enum.Font.GothamBold
+OpenCloseBtn.TextSize = 12
+Instance.new("UICorner", OpenCloseBtn).CornerRadius = UDim.new(0, 6)
+
+-- 3. Menu Chính (MainFrame)
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -17,6 +31,7 @@ MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
 MainFrame.Size = UDim2.new(0, 200, 0, 120)
 MainFrame.Active = true
 MainFrame.Draggable = true 
+MainFrame.Visible = true -- Mặc định hiện khi chạy script
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
@@ -48,13 +63,26 @@ ToggleBtn.TextSize = 14
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
 ---------------------------------------------------------
+-- LOGIC ĐÓNG/MỞ GIAO DIỆN
+---------------------------------------------------------
+OpenCloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        OpenCloseBtn.Text = "ẨN MENU"
+        OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    else
+        OpenCloseBtn.Text = "HIỆN MENU"
+        OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    end
+end)
+
+---------------------------------------------------------
 -- LOGIC ESP HỢP NHẤT
 ---------------------------------------------------------
 local Workspace = game:GetService("Workspace")
 local ESPEnabled = false
 local espConnection = nil
 
--- Danh sách vật phẩm tactical (Script 1)
 local tacticalList = {
     ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255),
     ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
@@ -66,7 +94,6 @@ local tacticalList = {
     ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
 }
 
--- Hàm tạo Highlight chung
 local function applyHighlight(instance, color, name)
     if not instance:FindFirstChild(name) then
         local highlight = Instance.new("Highlight")
@@ -80,16 +107,11 @@ local function applyHighlight(instance, color, name)
     end
 end
 
--- Hàm kiểm tra và áp dụng ESP (Gộp cả 2 script)
 local function checkAndApply(obj)
     if not ESPEnabled then return end
-    
-    -- Kiểm tra vật phẩm Tactical (Script 1)
     if tacticalList[obj.Name] then
         applyHighlight(obj, tacticalList[obj.Name], "ESP_Highlight")
     end
-    
-    -- Kiểm tra Nhân vật/NPC (Script 2)
     if obj:IsA("Model") then
         if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
             applyHighlight(obj, Color3.fromRGB(255, 0, 0), "ESP_Highlight")
@@ -97,7 +119,6 @@ local function checkAndApply(obj)
     end
 end
 
--- Hàm xóa sạch ESP khi tắt
 local function removeAllESP()
     for _, obj in pairs(Workspace:GetDescendants()) do
         local hl = obj:FindFirstChild("ESP_Highlight")
@@ -105,24 +126,16 @@ local function removeAllESP()
     end
 end
 
--- Sự kiện nhấn nút
 ToggleBtn.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
-    
     if ESPEnabled then
         ToggleBtn.Text = "TẮT ESP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         StatusLab.Text = "Trạng thái: ĐANG BẬT"
         StatusLab.TextColor3 = Color3.fromRGB(0, 255, 0)
-        
-        -- Quét toàn bộ map ngay khi bật
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            checkAndApply(obj)
-        end
-        
-        -- Theo dõi các vật thể/người chơi mới xuất hiện
+        for _, obj in pairs(Workspace:GetDescendants()) do checkAndApply(obj) end
         espConnection = Workspace.DescendantAdded:Connect(function(newObj)
-            task.wait(0.5) -- Đợi một chút để model load xong
+            task.wait(0.5)
             checkAndApply(newObj)
         end)
     else
@@ -130,13 +143,9 @@ ToggleBtn.MouseButton1Click:Connect(function()
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         StatusLab.Text = "Trạng thái: TẮT"
         StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
-        
-        if espConnection then
-            espConnection:Disconnect()
-            espConnection = nil
-        end
+        if espConnection then espConnection:Disconnect() espConnection = nil end
         removeAllESP()
     end
 end)
 
-print("Combined Tactical & Character ESP Loaded!")
+print("ESP Loaded with Open/Close Button!")
