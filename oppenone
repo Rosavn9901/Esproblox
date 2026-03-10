@@ -1,17 +1,17 @@
--- TRÌNH QUẢN LÝ TACTICAL & CHARACTER ESP (VỚI NÚT ĐÓNG/MỞ GUI)
+-- TRÌNH QUẢN LÝ TACTICAL & NPC ESP (ONLY OUTLINE)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local ToggleBtn = Instance.new("TextButton")
 local StatusLab = Instance.new("TextLabel")
-local OpenCloseBtn = Instance.new("TextButton") -- Nút đóng/mở GUI
+local OpenCloseBtn = Instance.new("TextButton")
 
--- 1. Thiết lập ScreenGui
+-- 1. Setup GUI
 ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "CombinedESP_UI"
+ScreenGui.Name = "OutlineESP_UI"
 ScreenGui.ResetOnSpawn = false
 
--- 2. Nút nhỏ để hiện/ẩn Menu (Nằm ở góc dưới bên trái)
+-- Nút Hiện/Ẩn Menu
 OpenCloseBtn.Name = "OpenCloseBtn"
 OpenCloseBtn.Parent = ScreenGui
 OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -23,7 +23,7 @@ OpenCloseBtn.Font = Enum.Font.GothamBold
 OpenCloseBtn.TextSize = 12
 Instance.new("UICorner", OpenCloseBtn).CornerRadius = UDim.new(0, 6)
 
--- 3. Menu Chính (MainFrame)
+-- Main Menu
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -31,13 +31,13 @@ MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
 MainFrame.Size = UDim2.new(0, 200, 0, 120)
 MainFrame.Active = true
 MainFrame.Draggable = true 
-MainFrame.Visible = true -- Mặc định hiện khi chạy script
+MainFrame.Visible = true
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Tactical & NPC ESP"
+Title.Text = "Outline ESP"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
@@ -56,28 +56,14 @@ ToggleBtn.Parent = MainFrame
 ToggleBtn.Position = UDim2.new(0.1, 0, 0.55, 0)
 ToggleBtn.Size = UDim2.new(0.8, 0, 0, 35)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.Text = "BẬT ESP TỔNG"
+ToggleBtn.Text = "BẬT ESP"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Font = Enum.Font.GothamSemibold
 ToggleBtn.TextSize = 14
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
 ---------------------------------------------------------
--- LOGIC ĐÓNG/MỞ GIAO DIỆN
----------------------------------------------------------
-OpenCloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    if MainFrame.Visible then
-        OpenCloseBtn.Text = "ẨN MENU"
-        OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    else
-        OpenCloseBtn.Text = "HIỆN MENU"
-        OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end
-end)
-
----------------------------------------------------------
--- LOGIC ESP HỢP NHẤT
+-- LOGIC ESP CHỈ HIỆN VIỀN
 ---------------------------------------------------------
 local Workspace = game:GetService("Workspace")
 local ESPEnabled = false
@@ -94,37 +80,48 @@ local tacticalList = {
     ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
 }
 
-local function applyHighlight(instance, color, name)
-    if not instance:FindFirstChild(name) then
+local function applyOutline(instance, color)
+    if not instance:FindFirstChild("Outline_Highlight") then
         local highlight = Instance.new("Highlight")
-        highlight.Name = name
+        highlight.Name = "Outline_Highlight"
         highlight.Parent = instance
-        highlight.FillColor = color
-        highlight.FillTransparency = 0.5
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        
+        -- Cài đặt để chỉ hiện viền:
+        highlight.FillTransparency = 1 -- Trong suốt hoàn toàn phần thân
+        highlight.OutlineColor = color -- Màu viền
+        highlight.OutlineTransparency = 0 -- Độ rõ của viền (0 là rõ nhất)
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Thấy xuyên tường
     end
 end
 
 local function checkAndApply(obj)
     if not ESPEnabled then return end
+    
+    -- Kiểm tra vật phẩm Tactical
     if tacticalList[obj.Name] then
-        applyHighlight(obj, tacticalList[obj.Name], "ESP_Highlight")
+        applyOutline(obj, tacticalList[obj.Name])
     end
+    
+    -- Kiểm tra Nhân vật/NPC (Head/Torso)
     if obj:IsA("Model") then
         if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
-            applyHighlight(obj, Color3.fromRGB(255, 0, 0), "ESP_Highlight")
+            applyOutline(obj, Color3.fromRGB(255, 255, 255)) -- Viền trắng cho NPC (hoặc đổi sang đỏ tùy bạn)
         end
     end
 end
 
 local function removeAllESP()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        local hl = obj:FindFirstChild("ESP_Highlight")
+        local hl = obj:FindFirstChild("Outline_Highlight")
         if hl then hl:Destroy() end
     end
 end
+
+-- Events
+OpenCloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    OpenCloseBtn.Text = MainFrame.Visible and "ẨN MENU" or "HIỆN MENU"
+end)
 
 ToggleBtn.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
@@ -139,7 +136,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
             checkAndApply(newObj)
         end)
     else
-        ToggleBtn.Text = "BẬT ESP TỔNG"
+        ToggleBtn.Text = "BẬT ESP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         StatusLab.Text = "Trạng thái: TẮT"
         StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
@@ -147,5 +144,3 @@ ToggleBtn.MouseButton1Click:Connect(function()
         removeAllESP()
     end
 end)
-
-print("ESP Loaded with Open/Close Button!")
