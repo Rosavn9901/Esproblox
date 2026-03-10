@@ -1,74 +1,7 @@
--- TRÌNH QUẢN LÝ TACTICAL & NPC ESP (ONLY OUTLINE)
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ToggleBtn = Instance.new("TextButton")
-local StatusLab = Instance.new("TextLabel")
-local OpenCloseBtn = Instance.new("TextButton")
-
--- 1. Setup GUI
-ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "OutlineESP_UI"
-ScreenGui.ResetOnSpawn = false
-
--- Nút Hiện/Ẩn Menu
-OpenCloseBtn.Name = "OpenCloseBtn"
-OpenCloseBtn.Parent = ScreenGui
-OpenCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-OpenCloseBtn.Position = UDim2.new(0.02, 0, 0.9, 0)
-OpenCloseBtn.Size = UDim2.new(0, 80, 0, 30)
-OpenCloseBtn.Text = "HIỆN MENU"
-OpenCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenCloseBtn.Font = Enum.Font.GothamBold
-OpenCloseBtn.TextSize = 12
-Instance.new("UICorner", OpenCloseBtn).CornerRadius = UDim.new(0, 6)
-
--- Main Menu
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 200, 0, 120)
-MainFrame.Active = true
-MainFrame.Draggable = true 
-MainFrame.Visible = true
-
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Outline ESP"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
-
-StatusLab.Parent = MainFrame
-StatusLab.Position = UDim2.new(0, 0, 0.3, 0)
-StatusLab.Size = UDim2.new(1, 0, 0, 20)
-StatusLab.Text = "Trạng thái: TẮT"
-StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
-StatusLab.BackgroundTransparency = 1
-StatusLab.Font = Enum.Font.Gotham
-StatusLab.TextSize = 14
-
-ToggleBtn.Parent = MainFrame
-ToggleBtn.Position = UDim2.new(0.1, 0, 0.55, 0)
-ToggleBtn.Size = UDim2.new(0.8, 0, 0, 35)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.Text = "BẬT ESP"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.GothamSemibold
-ToggleBtn.TextSize = 14
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
-
----------------------------------------------------------
--- LOGIC ESP CHỈ HIỆN VIỀN
----------------------------------------------------------
+-- TRÌNH QUẢN LÝ TACTICAL & NPC ESP (AUTO-RUN, ONLY OUTLINE)
 local Workspace = game:GetService("Workspace")
-local ESPEnabled = false
-local espConnection = nil
 
+-- 1. Cấu hình màu sắc viền
 local tacticalList = {
     ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255),
     ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
@@ -80,67 +13,44 @@ local tacticalList = {
     ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
 }
 
+-- 2. Hàm tạo viền (Outline)
 local function applyOutline(instance, color)
-    if not instance:FindFirstChild("Outline_Highlight") then
+    if not instance:FindFirstChild("Permanent_Outline") then
         local highlight = Instance.new("Highlight")
-        highlight.Name = "Outline_Highlight"
+        highlight.Name = "Permanent_Outline"
         highlight.Parent = instance
         
-        -- Cài đặt để chỉ hiện viền:
-        highlight.FillTransparency = 1 -- Trong suốt hoàn toàn phần thân
-        highlight.OutlineColor = color -- Màu viền
-        highlight.OutlineTransparency = 0 -- Độ rõ của viền (0 là rõ nhất)
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Thấy xuyên tường
+        -- Chỉ hiện viền, không hiện màu thân
+        highlight.FillTransparency = 1 
+        highlight.OutlineColor = color
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Xuyên tường
     end
 end
 
+-- 3. Hàm kiểm tra đối tượng
 local function checkAndApply(obj)
-    if not ESPEnabled then return end
-    
-    -- Kiểm tra vật phẩm Tactical
+    -- Kiểm tra vật phẩm Tactical (Script 1)
     if tacticalList[obj.Name] then
         applyOutline(obj, tacticalList[obj.Name])
     end
     
-    -- Kiểm tra Nhân vật/NPC (Head/Torso)
+    -- Kiểm tra NPC/Người chơi (Script 2)
     if obj:IsA("Model") then
+        -- Kiểm tra các bộ phận đặc trưng của character
         if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
-            applyOutline(obj, Color3.fromRGB(255, 0, 0)) -- Viền trắng cho NPC (hoặc đổi sang đỏ tùy bạn)
+            applyOutline(obj, Color3.fromRGB(255, 255, 255)) -- Viền trắng cho NPC
         end
     end
 end
 
-local function removeAllESP()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        local hl = obj:FindFirstChild("Outline_Highlight")
-        if hl then hl:Destroy() end
-    end
+-- 4. Kích hoạt quét toàn bộ map ngay lập tức
+for _, obj in pairs(Workspace:GetDescendants()) do
+    checkAndApply(obj)
 end
 
--- Events
-OpenCloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    OpenCloseBtn.Text = MainFrame.Visible and "ẨN MENU" or "HIỆN MENU"
-end)
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    ESPEnabled = not ESPEnabled
-    if ESPEnabled then
-        ToggleBtn.Text = "TẮT ESP"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        StatusLab.Text = "Trạng thái: ĐANG BẬT"
-        StatusLab.TextColor3 = Color3.fromRGB(0, 255, 0)
-        for _, obj in pairs(Workspace:GetDescendants()) do checkAndApply(obj) end
-        espConnection = Workspace.DescendantAdded:Connect(function(newObj)
-            task.wait(0.5)
-            checkAndApply(newObj)
-        end)
-    else
-        ToggleBtn.Text = "BẬT ESP"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        StatusLab.Text = "Trạng thái: TẮT"
-        StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
-        if espConnection then espConnection:Disconnect() espConnection = nil end
-        removeAllESP()
-    end
+-- 5. Tự động áp dụng cho các vật thể mới xuất hiện sau đó
+Workspace.DescendantAdded:Connect(function(newObj)
+    task.wait(0.5) -- Đợi model load xong bộ phận
+    checkAndApply(newObj)
 end)
