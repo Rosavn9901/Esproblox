@@ -105,7 +105,7 @@ local function checkAndApply(obj)
     -- Kiểm tra Nhân vật/NPC (Head/Torso)
     if obj:IsA("Model") then
         if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
-            applyOutline(obj, Color3.fromRGB(255, 255, 255)) -- Viền trắng cho NPC (hoặc đổi sang đỏ tùy bạn)
+            applyOutline(obj, Color3.fromRGB(255, 0, 0)) -- Viền trắng cho NPC (hoặc đổi sang đỏ tùy bạn)
         end
     end
 end
