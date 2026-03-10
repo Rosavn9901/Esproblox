@@ -1,4 +1,4 @@
--- TRÌNH QUẢN LÝ TACTICAL ESP (CUSTOM GUI)
+-- TRÌNH QUẢN LÝ TACTICAL & CHARACTER ESP (COMBINED)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
@@ -6,9 +6,9 @@ local ToggleBtn = Instance.new("TextButton")
 local StatusLab = Instance.new("TextLabel")
 local UICorner = Instance.new("UICorner")
 
--- Thiết lập giao diện
+-- 1. Thiết lập giao diện (GUI)
 ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "TacticalESP_UI"
+ScreenGui.Name = "CombinedESP_UI"
 
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -16,17 +16,17 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
 MainFrame.Size = UDim2.new(0, 200, 0, 120)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Cho phép kéo thả menu
+MainFrame.Draggable = true 
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Tactical ESP"
+Title.Text = "Tactical & NPC ESP"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
+Title.TextSize = 16
 
 StatusLab.Parent = MainFrame
 StatusLab.Position = UDim2.new(0, 0, 0.3, 0)
@@ -41,20 +41,21 @@ ToggleBtn.Parent = MainFrame
 ToggleBtn.Position = UDim2.new(0.1, 0, 0.55, 0)
 ToggleBtn.Size = UDim2.new(0.8, 0, 0, 35)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.Text = "BẬT ESP"
+ToggleBtn.Text = "BẬT ESP TỔNG"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Font = Enum.Font.GothamSemibold
 ToggleBtn.TextSize = 14
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
 ---------------------------------------------------------
--- LOGIC ESP
+-- LOGIC ESP HỢP NHẤT
 ---------------------------------------------------------
 local Workspace = game:GetService("Workspace")
 local ESPEnabled = false
 local espConnection = nil
 
-local espList = {
+-- Danh sách vật phẩm tactical (Script 1)
+local tacticalList = {
     ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255),
     ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
     ["FragGrenade"]     = Color3.fromRGB(255, 0, 0),
@@ -65,29 +66,46 @@ local espList = {
     ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
 }
 
-local function applyESP(instance)
-    if ESPEnabled and espList[instance.Name] then
-        if not instance:FindFirstChild("Tactical_ESP_Highlight") then
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "Tactical_ESP_Highlight"
-            highlight.Parent = instance
-            highlight.FillColor = espList[instance.Name]
-            highlight.FillTransparency = 0.5
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.OutlineTransparency = 0
-            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+-- Hàm tạo Highlight chung
+local function applyHighlight(instance, color, name)
+    if not instance:FindFirstChild(name) then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = name
+        highlight.Parent = instance
+        highlight.FillColor = color
+        highlight.FillTransparency = 0.5
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    end
+end
+
+-- Hàm kiểm tra và áp dụng ESP (Gộp cả 2 script)
+local function checkAndApply(obj)
+    if not ESPEnabled then return end
+    
+    -- Kiểm tra vật phẩm Tactical (Script 1)
+    if tacticalList[obj.Name] then
+        applyHighlight(obj, tacticalList[obj.Name], "ESP_Highlight")
+    end
+    
+    -- Kiểm tra Nhân vật/NPC (Script 2)
+    if obj:IsA("Model") then
+        if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
+            applyHighlight(obj, Color3.fromRGB(255, 0, 0), "ESP_Highlight")
         end
     end
 end
 
+-- Hàm xóa sạch ESP khi tắt
 local function removeAllESP()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        local hl = obj:FindFirstChild("Tactical_ESP_Highlight")
+        local hl = obj:FindFirstChild("ESP_Highlight")
         if hl then hl:Destroy() end
     end
 end
 
--- Chức năng Toggle
+-- Sự kiện nhấn nút
 ToggleBtn.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     
@@ -97,17 +115,18 @@ ToggleBtn.MouseButton1Click:Connect(function()
         StatusLab.Text = "Trạng thái: ĐANG BẬT"
         StatusLab.TextColor3 = Color3.fromRGB(0, 255, 0)
         
-        -- Quét hiện tại
+        -- Quét toàn bộ map ngay khi bật
         for _, obj in pairs(Workspace:GetDescendants()) do
-            applyESP(obj)
+            checkAndApply(obj)
         end
-        -- Theo dõi mới
+        
+        -- Theo dõi các vật thể/người chơi mới xuất hiện
         espConnection = Workspace.DescendantAdded:Connect(function(newObj)
-            task.wait(0.1)
-            applyESP(newObj)
+            task.wait(0.5) -- Đợi một chút để model load xong
+            checkAndApply(newObj)
         end)
     else
-        ToggleBtn.Text = "BẬT ESP"
+        ToggleBtn.Text = "BẬT ESP TỔNG"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         StatusLab.Text = "Trạng thái: TẮT"
         StatusLab.TextColor3 = Color3.fromRGB(255, 0, 0)
@@ -120,4 +139,4 @@ ToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("Tactical ESP Loaded!")
+print("Combined Tactical & Character ESP Loaded!")
