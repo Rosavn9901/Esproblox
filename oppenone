@@ -1,56 +1,86 @@
--- TRÌNH QUẢN LÝ TACTICAL & NPC ESP (AUTO-RUN, ONLY OUTLINE)
-local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
--- 1. Cấu hình màu sắc viền
-local tacticalList = {
-    ["SignalDisruptor"] = Color3.fromRGB(0, 255, 255),
-    ["ProximityAlarm"]  = Color3.fromRGB(255, 165, 0),
-    ["FragGrenade"]     = Color3.fromRGB(255, 0, 0),
-    ["Remotec4"]        = Color3.fromRGB(255, 0, 0),
-    ["Claymore"]        = Color3.fromRGB(255, 0, 0),
-    ["Bomb"]            = Color3.fromRGB(255, 255, 255),
-    ["Drone"]           = Color3.fromRGB(0, 255, 0),
-    ["StickyCamera"]    = Color3.fromRGB(255, 255, 0)
-}
+local MAX_DIST = 300
 
--- 2. Hàm tạo viền (Outline)
-local function applyOutline(instance, color)
-    if not instance:FindFirstChild("Permanent_Outline") then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "Permanent_Outline"
-        highlight.Parent = instance
-        
-        -- Chỉ hiện viền, không hiện màu thân
-        highlight.FillTransparency = 1 
-        highlight.OutlineColor = color
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Xuyên tường
+local function CreatePlayerTag(root)
+    if root:FindFirstChild("PlayerTag") then return root.PlayerTag end
+    
+    local bg = Instance.new("BillboardGui", root)
+    bg.Name = "PlayerTag"
+    bg.AlwaysOnTop = true
+    bg.Size = UDim2.new(0, 100, 0, 40)
+    bg.ExtentsOffset = Vector3.new(0, 3, 0)
+    bg.Enabled = false -- Mặc định ẩn
+    
+    local main = Instance.new("TextLabel", bg)
+    main.Name = "Main"
+    main.Size = UDim2.new(1, 0, 0.5, 0)
+    main.BackgroundTransparency = 1
+    main.Font = Enum.Font.GothamBold
+    main.TextSize = 12
+    main.TextStrokeTransparency = 0
+    
+    local arrow = Instance.new("TextLabel", bg)
+    arrow.Name = "Arrow"
+    arrow.Size = UDim2.new(1, 0, 0.5, 0)
+    arrow.Position = UDim2.new(0, 0, 0.5, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▼"
+    arrow.TextSize = 14
+    arrow.TextStrokeTransparency = 0
+    
+    return bg
+end
+
+local function SetupPlayer(p)
+    if p == LP then return end
+    
+    p.CharacterAdded:Connect(function(char)
+        local hrp = char:WaitForChild("HumanoidRootPart", 10)
+        if hrp then
+            CreatePlayerTag(hrp)
+        end
+    end)
+    
+    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        CreatePlayerTag(p.Character.HumanoidRootPart)
     end
 end
 
--- 3. Hàm kiểm tra đối tượng
-local function checkAndApply(obj)
-    -- Kiểm tra vật phẩm Tactical (Script 1)
-    if tacticalList[obj.Name] then
-        applyOutline(obj, tacticalList[obj.Name])
-    end
-    
-    -- Kiểm tra NPC/Người chơi (Script 2)
-    if obj:IsA("Model") then
-        -- Kiểm tra các bộ phận đặc trưng của character
-        if obj:FindFirstChild("torso") or obj:FindFirstChild("head") or obj:FindFirstChild("arm1") then
-            applyOutline(obj, Color3.fromRGB(255, 0, 0)) -- Viền trắng cho NPC
+for _, p in pairs(Players:GetPlayers()) do SetupPlayer(p) end
+Players.PlayerAdded:Connect(SetupPlayer)
+
+RunService.RenderStepped:Connect(function()
+    local myChar = LP.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
+            if pRoot then
+                local tag = pRoot:FindFirstChild("PlayerTag")
+                if tag then
+                    -- BƯỚC THÊM TEAM CHECK TẠI ĐÂY:
+                    -- isEnemy sẽ true nếu khác Team hoặc game không có hệ thống Team (Team = nil)
+                    local isEnemy = (p.Team ~= LP.Team) or (LP.Team == nil)
+                    local dist = (pRoot.Position - myRoot.Position).Magnitude
+                    
+                    if dist <= MAX_DIST and isEnemy then
+                        tag.Enabled = true
+                        local color = p.TeamColor and p.TeamColor.Color or Color3.new(1, 1, 1)
+                        
+                        tag.Main.Text = p.Name .. " [" .. math.floor(dist) .. "m]"
+                        tag.Main.TextColor3 = color
+                        tag.Arrow.TextColor3 = color
+                    else
+                        -- Ẩn nếu là đồng đội hoặc quá xa
+                        tag.Enabled = false
+                    end
+                end
+            end
         end
     end
-end
-
--- 4. Kích hoạt quét toàn bộ map ngay lập tức
-for _, obj in pairs(Workspace:GetDescendants()) do
-    checkAndApply(obj)
-end
-
--- 5. Tự động áp dụng cho các vật thể mới xuất hiện sau đó
-Workspace.DescendantAdded:Connect(function(newObj)
-    task.wait(0.5) -- Đợi model load xong bộ phận
-    checkAndApply(newObj)
 end)
